@@ -31,9 +31,7 @@ export default async function handler(req) {
       });
     }
 
-    // ========================================================
-    // НОДА 1: GROQ (Llama 3.3 70B / Qwen)
-    // ========================================================
+    // 1. GROQ
     if (process.env.GROQ_API_KEY) {
       try {
         const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -61,9 +59,7 @@ export default async function handler(req) {
       }
     }
 
-    // ========================================================
-    // НОДА 2: GOOGLE GEMINI (Flash)
-    // ========================================================
+    // 2. GEMINI
     if (process.env.GEMINI_API_KEY) {
       try {
         const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${process.env.GEMINI_API_KEY}`;
@@ -88,9 +84,7 @@ export default async function handler(req) {
       }
     }
 
-    // ========================================================
-    // НОДА 3: MISTRAL (Open Mistral Nemo)
-    // ========================================================
+    // 3. MISTRAL
     if (process.env.MISTRAL_API_KEY) {
       try {
         const res = await fetch('https://api.mistral.ai/v1/chat/completions', {
@@ -118,9 +112,7 @@ export default async function handler(req) {
       }
     }
 
-    // ========================================================
-    // НОДА 4: OPENROUTER (Free Pool)
-    // ========================================================
+    // 4. OPENROUTER
     if (process.env.OPENROUTER_API_KEY) {
       try {
         const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -148,9 +140,7 @@ export default async function handler(req) {
       }
     }
 
-    // ========================================================
-    // НОДА 5: COHERE (Command R+)
-    // ========================================================
+    // 5. COHERE
     if (process.env.COHERE_API_KEY) {
       try {
         const res = await fetch('https://api.cohere.com/v2/chat', {
@@ -178,9 +168,7 @@ export default async function handler(req) {
       }
     }
 
-    // ========================================================
-    // НОДА 6: CLOUDFLARE WORKERS AI (Llama 3.1 8B)
-    // ========================================================
+    // 6. CLOUDFLARE WORKERS AI
     if (process.env.CLOUDFLARE_API_TOKEN && process.env.CLOUDFLARE_ACCOUNT_ID) {
       try {
         const cfUrl = `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/ai/run/@cf/meta/llama-3.1-8b-instruct`;
@@ -209,7 +197,7 @@ export default async function handler(req) {
       }
     }
 
-    throw new Error('Все 6 нод роя временно недоступны или исчерпали лимиты.');
+    throw new Error('Все модели ИИ временно недоступны или исчерпали лимиты.');
   } catch (err) {
     return new Response(JSON.stringify({ error: err.message }), {
       status: 502,
