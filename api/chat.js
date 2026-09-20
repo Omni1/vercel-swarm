@@ -25,7 +25,7 @@ export default async function handler(req) {
     const query = prompt || (messages && messages[messages.length - 1]?.content);
 
     if (!query) {
-      return new Response(JSON.stringify({ error: 'Пустой запрос' }), {
+      return new Response(JSON.stringify({ error: 'Empty query' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -197,7 +197,7 @@ export default async function handler(req) {
       }
     }
 
-    throw new Error('Все модели ИИ временно недоступны или исчерпали лимиты.');
+    throw new Error('All AI nodes are temporarily unavailable or rate limited.');
   } catch (err) {
     return new Response(JSON.stringify({ error: err.message }), {
       status: 502,

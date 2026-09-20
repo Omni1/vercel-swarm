@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>ИИ Ассистент</title>
+  <title>AI Assistant</title>
   
   <link href="https://cdn.jsdelivr.net/npm/daisyui@4.7.2/dist/full.min.css" rel="stylesheet" />
   <script src="https://cdn.tailwindcss.com"></script>
@@ -400,7 +400,7 @@
           <path d="M18.5 15.5L19.5 18.5L22.5 19.5L19.5 20.5L18.5 23.5L17.5 20.5L14.5 19.5L17.5 18.5L18.5 15.5Z" opacity="0.7"/>
         </svg>
       </div>
-      <span class="text-xs font-semibold tracking-wide text-neutral-800 relative z-10">ИИ</span>
+      <span class="text-xs font-semibold tracking-wide text-neutral-800 relative z-10">AI</span>
     </button>
   </div>
 
@@ -416,7 +416,7 @@
           </button>
           <div class="w-3.5 h-3.5 rounded-full bg-[#febc2e] border border-[#d89e24]/50"></div>
           <div class="w-3.5 h-3.5 rounded-full bg-[#28c840] border border-[#1aab29]/50"></div>
-          <span class="ml-3 text-xs font-semibold tracking-wide text-neutral-600">ИИ Ассистент</span>
+          <span class="ml-3 text-xs font-semibold tracking-wide text-neutral-600">AI Assistant</span>
         </div>
 
         <div class="flex items-center gap-2">
@@ -446,9 +446,9 @@
             <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 2L13.8 8.2L20 10L13.8 11.8L12 18L10.2 11.8L4 10L10.2 8.2L12 2Z"/></svg>
           </div>
           <div class="space-y-1">
-            <div class="text-[11px] font-medium text-neutral-400">ИИ</div>
+            <div class="text-[11px] font-medium text-neutral-400">AI</div>
             <div class="bubble-pulse-ai glass-bubble-ai p-3.5 rounded-2xl text-[14px] leading-relaxed font-medium">
-              ИИ готов к работе. Напишите запрос.
+              AI готов к работе. Напишите запрос.
             </div>
           </div>
         </div>
@@ -462,7 +462,7 @@
             <input 
               id="user-input" 
               type="text" 
-              placeholder="Спросить ИИ..." 
+              placeholder="Ask AI..." 
               class="flex-1 bg-transparent px-4 py-2.5 text-sm text-neutral-800 placeholder-neutral-400 focus:outline-none"
               autocomplete="off"
             />
@@ -820,7 +820,7 @@
           '<svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M12 2L13.8 8.2L20 10L13.8 11.8L12 18L10.2 11.8L4 10L10.2 8.2L12 2Z"/></svg>' +
         '</div>' +
         '<div class="space-y-1">' +
-          '<div class="text-[11px] font-medium text-neutral-400">ИИ Ассистент</div>' +
+          '<div class="text-[11px] font-medium text-neutral-400">AI Assistant</div>' +
           '<div class="glass-bubble-ai px-4 py-2.5 rounded-2xl flex items-center gap-1.5 w-fit">' +
             '<span class="w-1.5 h-1.5 rounded-full bg-[#f97316] dot-1"></span>' +
             '<span class="w-1.5 h-1.5 rounded-full bg-[#f97316] dot-2"></span>' +
@@ -845,8 +845,8 @@
         const b = document.createElement('div');
         b.className = 'msg-spring flex items-start gap-3 max-w-xl';
 
-        const nodeTitle = (data && data.node) ? data.node : 'ИИ';
-        const replyText = (response.ok && data && data.reply) ? escapeHtml(data.reply) : ('Ошибка: ' + escapeHtml((data && data.error) || 'Сбой модели'));
+        const nodeTitle = (data && data.node) ? data.node : 'AI';
+        const replyText = (response.ok && data && data.reply) ? escapeHtml(data.reply) : ('Error: ' + escapeHtml((data && data.error) || 'Failed node'));
 
         b.innerHTML = 
           '<div class="w-7 h-7 rounded-full bg-white shadow-sm flex items-center justify-center text-xs shrink-0 border border-black/5 text-[#f97316]">' +
@@ -870,9 +870,9 @@
             '<svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 2L1 21h22L12 2zm1 14h-2v-2h2v2zm0-4h-2V8h2v4z"/></svg>' +
           '</div>' +
           '<div class="space-y-1">' +
-            '<div class="text-[11px] font-medium text-neutral-400">ИИ Ассистент</div>' +
+            '<div class="text-[11px] font-medium text-neutral-400">AI Assistant</div>' +
             '<div class="bubble-pulse-ai glass-bubble-ai p-3.5 rounded-2xl text-[14px] leading-relaxed font-medium text-[#b91c1c]">' +
-              'Ошибка связи со шлюзом ИИ.' +
+              'Connection error with AI gateway.' +
             '</div>' +
           '</div>';
         stream.appendChild(errBox);
