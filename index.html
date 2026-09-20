@@ -1,0 +1,933 @@
+﻿<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Universal Swarm Widget</title>
+  
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@4.7.2/dist/full.min.css" rel="stylesheet" />
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", sans-serif;
+      margin: 0;
+      touch-action: manipulation;
+    }
+
+    .swarm-btn-wrapper {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 99998;
+    }
+
+    /* ========================================================= */
+    /* КНОПКА ВЫЗОВА С ЖИВОЙ СВЕТОВОЙ ЗМЕЙКОЙ И ОРЕОЛОМ          */
+    /* ========================================================= */
+
+    .swarm-trigger-btn {
+      position: relative;
+      background: transparent;
+      border: none;
+      outline: none;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      user-select: none;
+      touch-action: manipulation;
+      transition: opacity 0.25s ease, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    
+    .swarm-trigger-btn:active {
+      opacity: 0.88;
+    }
+    .swarm-trigger-btn:active .btn-icon {
+      transform: scale(0.88);
+    }
+    .btn-icon {
+      transition: transform 0.15s ease;
+    }
+
+    .swarm-trigger-btn.is-hidden {
+      opacity: 0;
+      pointer-events: none;
+      transform: scale(0.6);
+    }
+
+    /* 1. Пульсирующий расходящийся цветной ореол */
+    .snake-glow {
+      position: absolute;
+      inset: -8px;
+      border-radius: 9999px;
+      overflow: hidden;
+      filter: blur(14px);
+      pointer-events: none;
+      z-index: 0;
+      animation: glowBreathe 2.6s ease-in-out infinite alternate;
+    }
+
+    .snake-glow::before {
+      content: "";
+      position: absolute;
+      width: 280px;
+      height: 280px;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: conic-gradient(from 0deg, transparent 0 200deg, rgba(0, 113, 227, 0.75) 250deg, rgba(0, 242, 254, 0.95) 310deg, rgba(16, 185, 129, 0.9) 350deg, transparent 360deg);
+      animation: snakeSpin 4.8s linear infinite;
+      will-change: transform;
+    }
+
+    /* 2. Тонкая контурная змейка */
+    .snake-border {
+      position: absolute;
+      inset: 0;
+      border-radius: 9999px;
+      overflow: hidden;
+      pointer-events: none;
+      z-index: 1;
+      background: rgba(255, 255, 255, 0.65);
+      box-shadow: 0 8px 24px -4px rgba(0, 113, 227, 0.2), 0 4px 12px rgba(0, 0, 0, 0.05);
+    }
+
+    .snake-border::before {
+      content: "";
+      position: absolute;
+      width: 280px;
+      height: 280px;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: conic-gradient(from 0deg, transparent 0 210deg, #0071e3 260deg, #00f2fe 315deg, #10b981 350deg, transparent 360deg);
+      animation: snakeSpin 4.8s linear infinite;
+      will-change: transform;
+    }
+
+    /* 3. Матовая стеклянная поверхность кнопки */
+    .btn-glass-surface {
+      position: absolute;
+      inset: 1.8px;
+      border-radius: 9999px;
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(24px) saturate(200%);
+      -webkit-backdrop-filter: blur(24px) saturate(200%);
+      box-shadow: inset 0 1px 1.5px rgba(255, 255, 255, 1);
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    @keyframes snakeSpin {
+      0% { transform: translate(-50%, -50%) rotate(0deg); }
+      100% { transform: translate(-50%, -50%) rotate(360deg); }
+    }
+
+    @keyframes glowBreathe {
+      0% {
+        opacity: 0.4;
+        filter: blur(10px);
+        transform: scale(0.97);
+      }
+      100% {
+        opacity: 0.88;
+        filter: blur(16px);
+        transform: scale(1.04);
+      }
+    }
+
+    /* ========================================================= */
+    /* МОДАЛЬНЫЙ ОВЕРЛЕЙ И ОКНО ЧАТА                             */
+    /* ========================================================= */
+
+    .swarm-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 99999;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.3s ease;
+    }
+
+    .swarm-modal.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .swarm-dialog-window {
+      position: relative;
+      transform: scale(0.92) translateY(20px);
+      transform-origin: calc(100% - 40px) calc(100% - 40px);
+      opacity: 0;
+      transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
+      will-change: transform, opacity;
+      overflow: hidden;
+    }
+
+    /* VisionOS световой блик */
+    .swarm-dialog-window::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      background: radial-gradient(550px circle at var(--spot-x, 50%) var(--spot-y, 20%), rgba(255, 255, 255, 0.26), transparent 70%);
+      pointer-events: none;
+      z-index: 25;
+      opacity: 0;
+      transition: opacity 0.4s ease;
+    }
+
+    .swarm-dialog-window.has-spotlight::before {
+      opacity: 1;
+    }
+
+    .swarm-modal.active .swarm-dialog-window {
+      transform: scale(1) translateY(0);
+      opacity: 1;
+    }
+
+    .apple-frosted-glass {
+      background: rgba(255, 255, 255, 0.88);
+      backdrop-filter: blur(35px) saturate(190%);
+      -webkit-backdrop-filter: blur(35px) saturate(190%);
+      border: 1px solid rgba(255, 255, 255, 0.85);
+    }
+
+    /* Плитки сообщений */
+    .glass-bubble-user {
+      background: rgba(209, 250, 229, 0.75);
+      backdrop-filter: blur(18px) saturate(190%);
+      -webkit-backdrop-filter: blur(18px) saturate(190%);
+      border: 1px solid rgba(255, 255, 255, 0.85);
+      box-shadow: 
+        0 8px 24px -4px rgba(16, 185, 129, 0.16),
+        inset 0 1px 1.5px rgba(255, 255, 255, 0.95),
+        inset 0 -1px 2px rgba(167, 243, 208, 0.4);
+      color: #064e3b;
+    }
+
+    .glass-bubble-ai {
+      background: rgba(254, 237, 213, 0.75);
+      backdrop-filter: blur(18px) saturate(190%);
+      -webkit-backdrop-filter: blur(18px) saturate(190%);
+      border: 1px solid rgba(255, 255, 255, 0.85);
+      box-shadow: 
+        0 8px 24px -4px rgba(249, 115, 22, 0.16),
+        inset 0 1px 1.5px rgba(255, 255, 255, 0.95),
+        inset 0 -1px 2px rgba(253, 186, 116, 0.4);
+      color: #431407;
+    }
+
+    .msg-spring {
+      animation: msgSpring 0.42s cubic-bezier(0.34, 1.35, 0.64, 1) forwards;
+      will-change: transform, opacity;
+    }
+
+    @keyframes msgSpring {
+      0% {
+        opacity: 0;
+        transform: translateY(14px) scale(0.96);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+    }
+
+    /* Aurora Glow */
+    .input-ambient-wrapper {
+      position: relative;
+      width: 100%;
+      max-width: 48rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .input-ambient-glow {
+      position: absolute;
+      inset: -3px;
+      border-radius: 22px;
+      background: linear-gradient(130deg, #0071e3, #00f2fe, #10b981, #6366f1);
+      background-size: 260% 260%;
+      filter: blur(15px);
+      opacity: 0;
+      transform: scale(0.97);
+      pointer-events: none;
+      z-index: 5;
+      transition: opacity 0.45s cubic-bezier(0.2, 0.8, 0.25, 1), transform 0.45s cubic-bezier(0.2, 0.8, 0.25, 1);
+    }
+
+    .input-ambient-wrapper.is-focused .input-ambient-glow {
+      opacity: 0.28;
+      transform: scale(1);
+      animation: auroraFlow 7s ease infinite alternate;
+    }
+
+    .input-ambient-glow.is-ignited {
+      opacity: 0.88 !important;
+      transform: scale(1.025) !important;
+      filter: blur(18px);
+      transition: opacity 0.08s ease-out, transform 0.08s ease-out;
+    }
+
+    @keyframes auroraFlow {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    .send-submit-btn {
+      background-color: #0071e3 !important;
+      color: #ffffff !important;
+      box-shadow: 0 4px 12px rgba(0, 113, 227, 0.3) !important;
+      outline: none !important;
+      border: none !important;
+      transition: opacity 0.25s ease, transform 0.15s ease, background-color 0.2s ease, box-shadow 0.25s ease;
+    }
+    .send-submit-btn:hover:not(:disabled) {
+      background-color: #0077ed !important;
+    }
+    .send-submit-btn:active:not(:disabled) {
+      background-color: #0062c4 !important;
+      transform: scale(0.95);
+    }
+    .send-submit-btn:disabled {
+      opacity: 0.42;
+      box-shadow: none !important;
+      cursor: not-allowed;
+    }
+
+    #ambient-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .radar-container {
+      position: relative;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 8px;
+      height: 8px;
+    }
+
+    .radar-core {
+      position: relative;
+      width: 7px;
+      height: 7px;
+      border-radius: 9999px;
+      background-color: #0071e3;
+      box-shadow: 0 0 8px rgba(0, 113, 227, 0.7);
+      animation: coreBreathe 2.4s ease-in-out infinite;
+    }
+
+    .radar-wave {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      border-radius: 9999px;
+      background-color: #0071e3;
+      opacity: 0.75;
+      animation: radarEcho 2.4s cubic-bezier(0.1, 0.2, 0.5, 1) infinite;
+      pointer-events: none;
+    }
+
+    @keyframes coreBreathe {
+      0%, 100% { transform: scale(0.9); box-shadow: 0 0 5px rgba(0, 113, 227, 0.5); }
+      50% { transform: scale(1.15); box-shadow: 0 0 10px rgba(0, 113, 227, 0.9); }
+    }
+
+    @keyframes radarEcho {
+      0% { transform: scale(1); opacity: 0.75; }
+      60%, 100% { transform: scale(3.4); opacity: 0; }
+    }
+
+    .bubble-pulse-user {
+      position: relative;
+    }
+    .bubble-pulse-user::after {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      border-radius: inherit;
+      box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.7), 0 0 24px rgba(16, 185, 129, 0.45);
+      animation: userGlowPulse 2.4s cubic-bezier(0.22, 1, 0.36, 1) 3;
+      pointer-events: none;
+      opacity: 0;
+    }
+
+    @keyframes userGlowPulse {
+      0% { transform: scale(0.98); opacity: 0; }
+      25% { opacity: 0.75; }
+      100% { transform: scale(1.07, 1.22); opacity: 0; }
+    }
+
+    .bubble-pulse-ai {
+      position: relative;
+    }
+    .bubble-pulse-ai::after {
+      content: "";
+      position: absolute;
+      top: 0; left: 0; right: 0; bottom: 0;
+      border-radius: inherit;
+      box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.75), 0 0 26px rgba(249, 115, 22, 0.45);
+      animation: aiGlowPulse 2.5s cubic-bezier(0.22, 1, 0.36, 1) 3;
+      pointer-events: none;
+      opacity: 0;
+    }
+
+    @keyframes aiGlowPulse {
+      0% { transform: scale(0.98); opacity: 0; }
+      25% { opacity: 0.8; }
+      100% { transform: scale(1.06, 1.18); opacity: 0; }
+    }
+
+    @keyframes typingDots {
+      0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+      40% { transform: translateY(-4px); opacity: 1; }
+    }
+    .dot-1 { animation: typingDots 1.2s infinite ease-in-out; }
+    .dot-2 { animation: typingDots 1.2s infinite ease-in-out 0.2s; }
+    .dot-3 { animation: typingDots 1.2s infinite ease-in-out 0.4s; }
+  </style>
+</head>
+
+<body class="min-h-screen bg-neutral-100 p-6">
+
+  <div class="max-w-md mx-auto space-y-3 pt-8">
+    <span class="badge badge-sm badge-outline text-neutral-400">Snake Beam Edition</span>
+    <h1 class="text-2xl font-bold text-neutral-800 tracking-tight">Световая змейка</h1>
+    <p class="text-neutral-500 text-sm leading-relaxed">
+      Обратите внимание на кнопку в правом нижнем углу: по её контуру плавно ползёт градиентная световая змейка с расходящимся ореолом.
+    </p>
+  </div>
+
+  <!-- Кнопка вызова виджета со световой змейкой и пульсирующим ореолом -->
+  <div class="swarm-btn-wrapper">
+    <button id="open-btn" type="button" class="swarm-trigger-btn h-14 pl-3 pr-5 rounded-full flex items-center gap-3">
+      <span class="snake-glow"></span>
+      <span class="snake-border"></span>
+      <span class="btn-glass-surface"></span>
+
+      <div class="btn-icon w-9 h-9 rounded-full bg-gradient-to-tr from-[#0071e3] via-[#4facfe] to-[#00f2fe] flex items-center justify-center text-white shadow-md shadow-blue-500/30 relative z-10">
+        <svg class="w-5 h-5 fill-current" viewBox="0 0 24 24">
+          <path d="M12 2L13.8 8.2L20 10L13.8 11.8L12 18L10.2 11.8L4 10L10.2 8.2L12 2Z" />
+          <path d="M18.5 15.5L19.5 18.5L22.5 19.5L19.5 20.5L18.5 23.5L17.5 20.5L14.5 19.5L17.5 18.5L18.5 15.5Z" opacity="0.7"/>
+        </svg>
+      </div>
+      <span class="text-xs font-semibold tracking-wide text-neutral-800 relative z-10">Чат</span>
+    </button>
+  </div>
+
+  <!-- Модальное окно чата -->
+  <div id="swarm-overlay" class="swarm-modal items-center justify-center p-0 md:p-6">
+    <canvas id="ambient-canvas"></canvas>
+
+    <div id="dialog-window" class="swarm-dialog-window relative z-10 w-full h-full md:max-w-5xl md:h-[90vh] apple-frosted-glass md:rounded-3xl shadow-2xl flex flex-col">
+      
+      <!-- Шапка -->
+      <header class="relative z-20 h-14 px-5 border-b border-black/[0.05] flex items-center justify-between shrink-0 bg-white/60 backdrop-blur-md">
+        <div class="flex items-center gap-2">
+          <button id="close-red-btn" type="button" class="w-3.5 h-3.5 rounded-full bg-[#ff5f57] border border-[#e0443e]/50 hover:opacity-80 transition-opacity flex items-center justify-center group" title="Закрыть">
+            <span class="text-[9px] leading-none text-black/60 font-bold">×</span>
+          </button>
+          <div class="w-3.5 h-3.5 rounded-full bg-[#febc2e] border border-[#d89e24]/50"></div>
+          <div class="w-3.5 h-3.5 rounded-full bg-[#28c840] border border-[#1aab29]/50"></div>
+          <span class="ml-3 text-xs font-semibold tracking-wide text-neutral-600">Swarm Dispatcher</span>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <!-- Переключатель звука -->
+          <button id="mute-btn" type="button" class="btn btn-ghost btn-circle btn-xs text-neutral-500 hover:text-neutral-800 transition-colors" title="Звук">
+            <svg id="mute-icon-on" class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24">
+              <path d="M14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77zm-2.5 9.77l-4.5-4H3v6h4l4.5 4v-6zm5-1c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/>
+            </svg>
+            <svg id="mute-icon-off" class="w-3.5 h-3.5 fill-current hidden text-neutral-400" viewBox="0 0 24 24">
+              <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27l4.73 4.73H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z"/>
+            </svg>
+          </button>
+
+          <div class="flex items-center gap-2.5 px-3 py-1 rounded-full text-[11px] font-mono font-medium bg-blue-50/90 text-[#0071e3] border border-blue-200/80 shadow-sm select-none">
+            <span class="radar-container">
+              <span class="radar-wave"></span>
+              <span class="radar-core"></span>
+            </span>
+            <span>6 Nodes</span>
+          </div>
+          <button id="close-btn" type="button" class="btn btn-ghost btn-circle btn-xs text-neutral-400 hover:text-neutral-700 ml-1 text-sm font-bold">✕</button>
+        </div>
+      </header>
+
+      <!-- Сообщения -->
+      <main id="chat-stream" class="relative z-20 flex-1 overflow-y-auto p-6 space-y-4 select-text">
+        <div class="msg-spring flex items-start gap-3 max-w-xl">
+          <div class="w-7 h-7 rounded-full bg-white shadow-sm flex items-center justify-center text-xs shrink-0 border border-black/5 text-[#f97316]">
+            <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 2L13.8 8.2L20 10L13.8 11.8L12 18L10.2 11.8L4 10L10.2 8.2L12 2Z"/></svg>
+          </div>
+          <div class="space-y-1">
+            <div class="text-[11px] font-medium text-neutral-400">Swarm Core</div>
+            <div class="bubble-pulse-ai glass-bubble-ai p-3.5 rounded-2xl text-[14px] leading-relaxed font-medium">
+              Все визуальные эффекты в сборе: световая змейка на кнопке, эмбилайт при наборе, мягкий звук и тактильный отклик!
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- Поле ввода с Aurora Glow -->
+      <footer class="relative z-20 p-4 md:p-6 shrink-0 flex justify-center">
+        <div id="input-wrapper" class="input-ambient-wrapper">
+          <div id="ambient-glow" class="input-ambient-glow"></div>
+          
+          <form id="prompt-form" class="relative z-10 w-full flex items-center gap-2 p-1.5 rounded-2xl bg-white/90 border border-white shadow-lg shadow-black/[0.03] backdrop-blur-2xl">
+            <input 
+              id="user-input" 
+              type="text" 
+              placeholder="Спросить ИИ..." 
+              class="flex-1 bg-transparent px-4 py-2.5 text-sm text-neutral-800 placeholder-neutral-400 focus:outline-none"
+              autocomplete="off"
+            />
+            <button 
+              id="submit-btn"
+              type="submit" 
+              disabled
+              class="send-submit-btn h-9 px-4 rounded-xl text-xs font-medium tracking-wide transition-all cursor-pointer shrink-0">
+              Отправить
+            </button>
+          </form>
+        </div>
+      </footer>
+
+    </div>
+  </div>
+
+  <script>
+    const overlay = document.getElementById('swarm-overlay');
+    const dialogWindow = document.getElementById('dialog-window');
+    const openBtn = document.getElementById('open-btn');
+    const closeBtn = document.getElementById('close-btn');
+    const closeRedBtn = document.getElementById('close-red-btn');
+    const muteBtn = document.getElementById('mute-btn');
+    const muteIconOn = document.getElementById('mute-icon-on');
+    const muteIconOff = document.getElementById('mute-icon-off');
+
+    let isWidgetOpen = false;
+    let animationFrameId = null;
+    let isMuted = false;
+
+    // СИНТЕЗАТОР ЗВУКОВ (WEB AUDIO API)
+    let audioCtx = null;
+
+    function getAudioContext() {
+      if (!audioCtx) {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (AudioContextClass) {
+          audioCtx = new AudioContextClass();
+        }
+      }
+      if (audioCtx && audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+      return audioCtx;
+    }
+
+    const Sound = {
+      open: function() {
+        if (isMuted) return;
+        const ctx = getAudioContext();
+        if (!ctx) return;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const now = ctx.currentTime;
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(420, now);
+        osc.frequency.exponentialRampToValueAtTime(640, now + 0.08);
+        gain.gain.setValueAtTime(0.06, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.1);
+      },
+      close: function() {
+        if (isMuted) return;
+        const ctx = getAudioContext();
+        if (!ctx) return;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const now = ctx.currentTime;
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(520, now);
+        osc.frequency.exponentialRampToValueAtTime(310, now + 0.07);
+        gain.gain.setValueAtTime(0.04, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.08);
+      },
+      tap: function() {
+        if (isMuted) return;
+        const ctx = getAudioContext();
+        if (!ctx) return;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const now = ctx.currentTime;
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(920, now);
+        osc.frequency.exponentialRampToValueAtTime(450, now + 0.02);
+        gain.gain.setValueAtTime(0.018, now);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.02);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.025);
+      },
+      send: function() {
+        if (isMuted) return;
+        const ctx = getAudioContext();
+        if (!ctx) return;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const now = ctx.currentTime;
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(380, now);
+        osc.frequency.exponentialRampToValueAtTime(820, now + 0.12);
+        gain.gain.setValueAtTime(0.05, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.13);
+      },
+      receive: function() {
+        if (isMuted) return;
+        const ctx = getAudioContext();
+        if (!ctx) return;
+        const filter = ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(1100, ctx.currentTime);
+        const masterGain = ctx.createGain();
+        masterGain.connect(filter);
+        filter.connect(ctx.destination);
+        const notes = [
+          { freq: 440.00, delay: 0 },
+          { freq: 659.25, delay: 0.055 }
+        ];
+        notes.forEach(function(item) {
+          const osc = ctx.createOscillator();
+          const noteGain = ctx.createGain();
+          const start = ctx.currentTime + item.delay;
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(item.freq, start);
+          noteGain.gain.setValueAtTime(0.0001, start);
+          noteGain.gain.exponentialRampToValueAtTime(0.038, start + 0.035);
+          noteGain.gain.exponentialRampToValueAtTime(0.0001, start + 0.52);
+          osc.connect(noteGain);
+          noteGain.connect(masterGain);
+          osc.start(start);
+          osc.stop(start + 0.55);
+        });
+      }
+    };
+
+    function hapticFeedback(ms) {
+      try {
+        if ('vibrate' in navigator) navigator.vibrate(ms || 10);
+      } catch (e) {}
+    }
+
+    function addTapListener(el, callback) {
+      if (!el) return;
+      el.addEventListener('click', function(e) {
+        if (e && e.preventDefault) e.preventDefault();
+        callback(e);
+      });
+    }
+
+    function openWidget(e) {
+      if (e && e.preventDefault) e.preventDefault();
+      hapticFeedback(12);
+      Sound.open();
+      isWidgetOpen = true;
+
+      overlay.style.display = 'flex';
+      void overlay.offsetWidth;
+
+      overlay.classList.add('active');
+      openBtn.classList.add('is-hidden');
+      startCanvas();
+    }
+
+    function closeWidget(e) {
+      if (e && e.preventDefault) e.preventDefault();
+      hapticFeedback(8);
+      Sound.close();
+      isWidgetOpen = false;
+
+      overlay.classList.remove('active');
+      openBtn.classList.remove('is-hidden');
+      stopCanvas();
+
+      setTimeout(function() {
+        if (!isWidgetOpen) {
+          overlay.style.display = 'none';
+        }
+      }, 320);
+    }
+
+    addTapListener(openBtn, openWidget);
+    addTapListener(closeBtn, closeWidget);
+    addTapListener(closeRedBtn, closeWidget);
+
+    addTapListener(muteBtn, function() {
+      isMuted = !isMuted;
+      if (isMuted) {
+        muteIconOn.classList.add('hidden');
+        muteIconOff.classList.remove('hidden');
+      } else {
+        muteIconOn.classList.remove('hidden');
+        muteIconOff.classList.add('hidden');
+        Sound.tap();
+      }
+      hapticFeedback(6);
+    });
+
+    window.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' && isWidgetOpen) closeWidget();
+    });
+
+    // VisionOS световой блик
+    function updateSpotlight(x, y) {
+      const rect = dialogWindow.getBoundingClientRect();
+      const relX = x - rect.left;
+      const relY = y - rect.top;
+      dialogWindow.style.setProperty('--spot-x', relX + 'px');
+      dialogWindow.style.setProperty('--spot-y', relY + 'px');
+      if (!dialogWindow.classList.contains('has-spotlight')) {
+        dialogWindow.classList.add('has-spotlight');
+      }
+    }
+
+    dialogWindow.addEventListener('mousemove', function(e) {
+      updateSpotlight(e.clientX, e.clientY);
+    });
+
+    dialogWindow.addEventListener('touchmove', function(e) {
+      if (e.touches && e.touches[0]) {
+        updateSpotlight(e.touches[0].clientX, e.touches[0].clientY);
+      }
+    }, { passive: true });
+
+    dialogWindow.addEventListener('mouseleave', function() {
+      dialogWindow.classList.remove('has-spotlight');
+    });
+
+    // Фон Canvas
+    const canvas = document.getElementById('ambient-canvas');
+    const ctx = canvas.getContext('2d');
+    let width, height;
+
+    const blobs = [
+      { x: 0.2, y: 0.3, r: 0.45, vx: 0.0003, vy: 0.0002, color: 'rgba(165, 216, 255, 0.55)' },
+      { x: 0.8, y: 0.4, r: 0.50, vx: -0.0002, vy: 0.0003, color: 'rgba(255, 192, 203, 0.45)' },
+      { x: 0.5, y: 0.8, r: 0.55, vx: 0.0002, vy: -0.0002, color: 'rgba(208, 191, 255, 0.50)' }
+    ];
+
+    function resize() {
+      width = canvas.width = window.innerWidth;
+      height = canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    function renderLoop() {
+      if (!isWidgetOpen) return;
+
+      ctx.fillStyle = '#f5f5f7';
+      ctx.fillRect(0, 0, width, height);
+
+      blobs.forEach(function(b) {
+        b.x += b.vx; b.y += b.vy;
+        if (b.x < 0.1 || b.x > 0.9) b.vx *= -1;
+        if (b.y < 0.1 || b.y > 0.9) b.vy *= -1;
+
+        const g = ctx.createRadialGradient(
+          b.x * width, b.y * height, 0,
+          b.x * width, b.y * height, b.r * Math.min(width, height)
+        );
+        g.addColorStop(0, b.color);
+        g.addColorStop(1, 'rgba(245, 245, 247, 0)');
+
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, width, height);
+      });
+
+      animationFrameId = requestAnimationFrame(renderLoop);
+    }
+
+    function startCanvas() {
+      if (!animationFrameId) {
+        animationFrameId = requestAnimationFrame(renderLoop);
+      }
+    }
+
+    function stopCanvas() {
+      if (animationFrameId) {
+        cancelAnimationFrame(animationFrameId);
+        animationFrameId = null;
+      }
+    }
+
+    // Чат, Aurora-эмбилайт и инпут
+    const form = document.getElementById('prompt-form');
+    const input = document.getElementById('user-input');
+    const inputWrapper = document.getElementById('input-wrapper');
+    const ambientGlow = document.getElementById('ambient-glow');
+    const submitBtn = document.getElementById('submit-btn');
+    const stream = document.getElementById('chat-stream');
+
+    let glowTimeout;
+    let lastSoundTime = 0;
+
+    function triggerGlowPulse() {
+      ambientGlow.classList.add('is-ignited');
+      clearTimeout(glowTimeout);
+      glowTimeout = setTimeout(function() {
+        ambientGlow.classList.remove('is-ignited');
+      }, 320);
+
+      const now = Date.now();
+      if (now - lastSoundTime > 45) {
+        Sound.tap();
+        lastSoundTime = now;
+      }
+    }
+
+    input.addEventListener('focus', function() {
+      inputWrapper.classList.add('is-focused');
+    });
+
+    input.addEventListener('blur', function() {
+      if (!input.value.trim()) {
+        inputWrapper.classList.remove('is-focused');
+      }
+    });
+
+    input.addEventListener('input', function() {
+      submitBtn.disabled = !input.value.trim();
+      triggerGlowPulse();
+    });
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    form.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const txt = input.value.trim();
+      if (!txt) return;
+
+      hapticFeedback(10);
+      Sound.send();
+      const safeTxt = escapeHtml(txt);
+
+      // Сообщение пользователя
+      const u = document.createElement('div');
+      u.className = 'msg-spring flex justify-end';
+      u.innerHTML = '<div class="bubble-pulse-user glass-bubble-user max-w-xl p-3.5 rounded-2xl text-[14px] leading-relaxed font-medium">' + safeTxt + '</div>';
+      stream.appendChild(u);
+      
+      input.value = '';
+      submitBtn.disabled = true;
+      inputWrapper.classList.remove('is-focused');
+      ambientGlow.classList.remove('is-ignited');
+      stream.scrollTop = stream.scrollHeight;
+
+      // Индикатор ожидания ответа
+      const typingIndicator = document.createElement('div');
+      typingIndicator.id = 'ai-typing-status';
+      typingIndicator.className = 'msg-spring flex items-start gap-3 max-w-xl';
+      typingIndicator.innerHTML = 
+        '<div class="w-7 h-7 rounded-full bg-white shadow-sm flex items-center justify-center text-xs shrink-0 border border-black/5 text-[#f97316]">' +
+          '<svg class="w-3.5 h-3.5 fill-current" viewBox="0 0 24 24"><path d="M12 2L13.8 8.2L20 10L13.8 11.8L12 18L10.2 11.8L4 10L10.2 8.2L12 2Z"/></svg>' +
+        '</div>' +
+        '<div class="space-y-1">' +
+          '<div class="text-[11px] font-medium text-neutral-400">Swarm Dispatcher</div>' +
+          '<div class="glass-bubble-ai px-4 py-2.5 rounded-2xl flex items-center gap-1.5 w-fit">' +
+            '<span class="w-1.5 h-1.5 rounded-full bg-[#f97316] dot-1"></span>' +
+            '<span class="w-1.5 h-1.5 rounded-full bg-[#f97316] dot-2"></span>' +
+            '<span class="w-1.5 h-1.5 rounded-full bg-[#f97316] dot-3"></span>' +
+          '</div>' +
+        '</div>';
+      stream.appendChild(typingIndicator);
+      stream.scrollTop = stream.scrollHeight;
+
+      // Реальный сетевой запрос к серверной Edge-функции роя
+      try {
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: txt })
+        });
+
+        const data = await response.json();
+        typingIndicator.remove();
+        hapticFeedback(6);
+        Sound.receive();
+
+        const b = document.createElement('div');
+        b.className = 'msg-spring flex items-start gap-3 max-w-xl';
+
+        const nodeTitle = (data && data.node) ? data.node : 'Swarm Core';
+        const replyText = (response.ok && data && data.reply) ? escapeHtml(data.reply) : ('Ошибка: ' + escapeHtml((data && data.error) || 'Сбой ноды'));
+
+        b.innerHTML = 
+          '<div class="w-7 h-7 rounded-full bg-white shadow-sm flex items-center justify-center text-xs shrink-0 border border-black/5 text-[#f97316]">' +
+            '<svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 2L13.8 8.2L20 10L13.8 11.8L12 18L10.2 11.8L4 10L10.2 8.2L12 2Z"/></svg>' +
+          '</div>' +
+          '<div class="space-y-1">' +
+            '<div class="text-[11px] font-medium text-neutral-400">' + nodeTitle + '</div>' +
+            '<div class="bubble-pulse-ai glass-bubble-ai p-3.5 rounded-2xl text-[14px] leading-relaxed font-medium">' +
+              replyText +
+            '</div>' +
+          '</div>';
+        stream.appendChild(b);
+      } catch (err) {
+        typingIndicator.remove();
+        hapticFeedback(12);
+
+        const errBox = document.createElement('div');
+        errBox.className = 'msg-spring flex items-start gap-3 max-w-xl';
+        errBox.innerHTML = 
+          '<div class="w-7 h-7 rounded-full bg-white shadow-sm flex items-center justify-center text-xs shrink-0 border border-black/5 text-[#ef4444]">' +
+            '<svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12 2L1 21h22L12 2zm1 14h-2v-2h2v2zm0-4h-2V8h2v4z"/></svg>' +
+          '</div>' +
+          '<div class="space-y-1">' +
+            '<div class="text-[11px] font-medium text-neutral-400">Swarm Dispatcher</div>' +
+            '<div class="bubble-pulse-ai glass-bubble-ai p-3.5 rounded-2xl text-[14px] leading-relaxed font-medium text-[#b91c1c]">' +
+              'Ошибка связи со шлюзом роя.' +
+            '</div>' +
+          '</div>';
+        stream.appendChild(errBox);
+      }
+
+      stream.scrollTop = stream.scrollHeight;
+    });
+  </script>
+</body>
+</html>
